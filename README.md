@@ -19,7 +19,7 @@
 ## Installation
 Clone the repository and navigate to the project directory:
 ```bash
-git clone <repository-url>
+git clone https://github.com/tanpaulus/Hana-Network
 cd HANA
 ```
 Install required packages:
