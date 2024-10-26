@@ -1,31 +1,37 @@
-# Auto Deposit ETH and auto draw for HANA Network
+# Auto Deposit & Auto Draw for HANA Network
 
+**Join our community for updates and support:** [SOGamers Airdrop Channel](https://t.me/SOGamersAirdrop)
 
-## Description 
-**Support Multi Account** 
-- Register here : https://hanafuda.hana.network/dashboard
-- Regist with Google
-- Submit Code
-  ```
-  AF42JI
-  ```
-- Deposit $1 to ETH BASE, just not too much.
-- Make 5,000 transactions to earn 300/hour (to unlock cards and get points).
-- Make 10,000 transactions to earn 643 Garden Rewards boxes (to unlock collection cards).
+## Description
+**Supports Multiple Accounts**
 
+1. Register at: [Hanafuda Dashboard](https://hanafuda.hana.network/dashboard)
+2. Sign up with your Google account
+3. Enter referral code:
+   ```
+   AF42JI
+   ```
+4. Deposit around $1 in ETH on Base (don’t overdo it).
+5. Make:
+   - 5,000 transactions to earn 300 points/hour (unlocks cards and earns points).
+   - 10,000 transactions to unlock 643 Garden Reward boxes (collect more cards).
 
-
-## Instalation
+## Installation
+Clone the repository and navigate to the project directory:
 ```bash
-git clone 
+git clone <repository-url>
 cd HANA
 ```
+Install required packages:
 ```bash
 pip install web3 colorama
 ```
+Run the script:
 ```bash
 python3 hana.py
 ```
-**Create pvkey.txt and input Private Key**
 
-**Put the Refresh token in token.json to run hanaauto.py**
+### Setup Files
+1. Create a file named `pvkey.txt` and add your Private Key.
+2. Add your Refresh token to `token.json` to use `hanaauto.py`.
+
