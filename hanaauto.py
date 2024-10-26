@@ -7,9 +7,8 @@ import math
 import traceback
 from colorama import Fore, Style
 
-# Konfigurasi logging
 logging.basicConfig(filename='hana_auto_grow.log', level=logging.INFO)
-API_KEY = "YOUR_API_KEY"  # Ganti dengan API Key Anda
+API_KEY = "AIzaSyDipzN0VRfTPnMGhQ5PSzO27Cxm3DohJGY"  # Ganti dengan API Key Anda
 GRAPHQL_URL = "https://hanafuda-backend-app-520478841386.us-central1.run.app/graphql"
 
 def refresh_access_token(refresh_token):
@@ -17,8 +16,8 @@ def refresh_access_token(refresh_token):
     headers = {"Content-Type": "application/json"}
     body = json.dumps({"grant_type": "refresh_token", "refresh_token": refresh_token})
 
-    response = requests.post(url, headers=headers, data=body)
     print(Fore.YELLOW + "Refreshing access token..." + Style.RESET_ALL)
+    response = requests.post(url, headers=headers, data=body)
 
     if response.status_code != 200:
         error_response = response.json()
@@ -92,6 +91,12 @@ def main():
     for account in accounts:
         try:
             refresh_token = account['refresh_token']
+            
+            try:
+                token_response = refresh_access_token(refresh_token)
+                refresh_token = token_response.get("access_token")
+            except:
+                refresh_token = account['refresh_token']
             access_token = refresh_token  
 
             headers = {
