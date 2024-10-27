@@ -9,14 +9,20 @@ init(autoreset=True)
 
 def print_header():
     header = """
-        t.me/SOGamersAirdrop
+    ███████╗████████╗ █████╗ ██╗     ██╗     
+    ██╔════╝╚══██╔══╝██╔══██╗██║     ██║     
+    ███████╗   ██║   ███████║██║     ██║     
+    ╚════██║   ██║   ██╔══██║██║     ██║     
+    ███████║   ██║   ██║  ██║███████╗███████╗
+    ╚══════╝   ╚═╝   ╚═╝  ╚═╝╚══════╝╚══════╝
+        t.me/dpangestuw31
     Auto Deposit ETH for HANA Network
     """
     print(Fore.CYAN + Style.BRIGHT + header + Style.RESET_ALL)
 
 RPC_URL = "https://mainnet.base.org"
 CONTRACT_ADDRESS = "0xC5bf05cD32a14BFfb705Fb37a9d218895187376c"
-AMOUNT_ETH = 0.0000000001
+AMOUNT_ETH = 0.0000001  
 
 web3 = Web3(Web3.HTTPProvider(RPC_URL))
 
@@ -50,13 +56,14 @@ async def send_transaction(private_key, delay):
     from_address = web3.eth.account.from_key(private_key).address
     short_from_address = from_address[:4] + "..." + from_address[-4:]
     
+    # Get current time
     current_time = datetime.now().strftime('%Y-%m-%d %H:%M:%S')
 
     try:
         transaction = contract.functions.depositETH().build_transaction({
             'from': from_address,
             'value': amount_wei,
-            'gas': 100000,
+            'gas': 50000,
             'gasPrice': web3.eth.gas_price,
             'nonce': nonces[private_key],
         })
@@ -64,8 +71,10 @@ async def send_transaction(private_key, delay):
         signed_txn = web3.eth.account.sign_transaction(transaction, private_key=private_key)
         tx_hash = web3.eth.send_raw_transaction(signed_txn.raw_transaction)
 
+        # Shorten the transaction hash
         short_tx_hash = tx_hash.hex()[:6] + "..." + tx_hash.hex()[-4:]
 
+        # Update and display account-specific transaction status
         transactions_per_account[private_key]['sent'] += 1
         transactions_per_account[private_key]['remaining'] -= 1
         

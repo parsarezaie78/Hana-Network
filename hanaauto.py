@@ -1,29 +1,30 @@
-import requests
+import aiohttp
+import asyncio
 import json
-import time
 import logging
-import random
 import math
+import random
 import traceback
 from colorama import Fore, Style
 
+# Konfigurasi logging
 logging.basicConfig(filename='hana_auto_grow.log', level=logging.INFO)
 API_KEY = "AIzaSyDipzN0VRfTPnMGhQ5PSzO27Cxm3DohJGY"  # Ganti dengan API Key Anda
 GRAPHQL_URL = "https://hanafuda-backend-app-520478841386.us-central1.run.app/graphql"
 
-def refresh_access_token(refresh_token):
+async def refresh_access_token(session, refresh_token):
     url = f"https://securetoken.googleapis.com/v1/token?key={API_KEY}"
     headers = {"Content-Type": "application/json"}
     body = json.dumps({"grant_type": "refresh_token", "refresh_token": refresh_token})
 
     print(Fore.YELLOW + "Refreshing access token..." + Style.RESET_ALL)
-    response = requests.post(url, headers=headers, data=body)
-
-    if response.status_code != 200:
-        error_response = response.json()
-        raise Exception(f"Failed to refresh access token: {error_response['error']}")
-
-    return response.json()
+    async with session.post(url, headers=headers, data=body) as response:
+        if response.status != 200:
+            error_response = await response.json()
+            print(Fore.YELLOW + f"Failed to refresh access token: {error_response['error']}" + Style.RESET_ALL)
+            raise Exception(f"Failed to refresh access token: {error_response['error']}")
+        
+        return await response.json()
 
 def print_intro():
     intro_text = (
@@ -44,16 +45,16 @@ def load_tokens_from_file():
         print_message("File 'tokens.json' tidak ditemukan.", Fore.RED)
         exit()
 
-def execute_graphql_query(headers, query, variables=None):
+async def execute_graphql_query(session, headers, query, variables=None):
     try:
-        response = requests.post(GRAPHQL_URL, headers=headers, json={"query": query, "variables": variables})
-        response.raise_for_status()
-        return response.json()
-    except requests.exceptions.RequestException as e:
+        async with session.post(GRAPHQL_URL, headers=headers, json={"query": query, "variables": variables}) as response:
+            response.raise_for_status()
+            return await response.json()
+    except Exception as e:
         logging.error(f"GraphQL request failed: {e}")
         raise
 
-def get_user_total_points(headers):
+async def get_user_total_points(session, headers):
     query_current_user = """
     query CurrentUser {
         currentUser {
@@ -74,100 +75,129 @@ def get_user_total_points(headers):
         }
     }
     """
-    response_current_user = requests.post(GRAPHQL_URL, headers=headers, json={"query": query_current_user})
+    async with session.post(GRAPHQL_URL, headers=headers, json={"query": query_current_user}) as response:
+        if response.status == 200:
+            current_user_data = await response.json()
+            return current_user_data['data']['currentUser']['totalPoint']
+        else:
+            raise Exception("Failed to retrieve current user information.")
 
-    if response_current_user.status_code == 200:
-        current_user_data = response_current_user.json()
-        user_name = current_user_data['data']['currentUser']['name']
-        initial_total_point = current_user_data['data']['currentUser']['totalPoint']
-        inviter = current_user_data['data']['currentUser']['inviter']['id']
-        return initial_total_point
-    else:
-        raise Exception("Failed to retrieve current user information.")
-
-def main():
-    accounts = load_tokens_from_file()
-
-    for account in accounts:
+async def process_account(session, account):
+    try:
+        refresh_token = account['refresh_token']
+                
+        # Refresh the access token
         try:
+            token_response = await refresh_access_token(session, refresh_token)
+            refresh_token = token_response.get("access_token")
+            print("sukses")
+        except:
             refresh_token = account['refresh_token']
-            
-            try:
-                token_response = refresh_access_token(refresh_token)
-                refresh_token = token_response.get("access_token")
-            except:
-                refresh_token = account['refresh_token']
-            access_token = refresh_token  
+        access_token = refresh_token  
 
-            headers = {
-                "Authorization": f"Bearer {access_token}",
-                "Content-Type": "application/json"
-            }
+        headers = {
+            "Authorization": f"Bearer {access_token}",
+            "Content-Type": "application/json"
+        }
 
-            query_get_garden = """
-            query GetGardenForCurrentUser {
-                getGardenForCurrentUser {
-                    gardenStatus { growActionCount, gardenRewardActionCount }
-                    gardenMembers { name, id }
+        query_get_garden = """
+        query GetGardenForCurrentUser {
+            getGardenForCurrentUser {
+                id
+                inviteCode
+                gardenDepositCount
+                gardenStatus {
+                    id
+                    activeEpoch
+                    growActionCount
+                    gardenRewardActionCount
+                }
+                gardenMilestoneRewardInfo {
+                    id
+                    gardenDepositCountWhenLastCalculated
+                    lastAcquiredAt
+                    createdAt
+                }
+                gardenMembers {
+                    id
+                    sub
+                    name
+                    iconPath
+                    depositCount
                 }
             }
-            """
-            
-            garden_data = execute_graphql_query(headers, query_get_garden)
-            garden_status = garden_data['data']['getGardenForCurrentUser']['gardenStatus']
-            garden_members = garden_data['data']['getGardenForCurrentUser']['gardenMembers']
+        }
+        """
+        
+        garden_data = await execute_graphql_query(session, headers, query_get_garden)
+        garden_status = garden_data['data']['getGardenForCurrentUser']['gardenStatus']
+        garden_members = garden_data['data']['getGardenForCurrentUser']['gardenMembers']
 
-            total_grows = garden_status['growActionCount']
-            total_rewards = garden_status['gardenRewardActionCount']
+        total_grows = garden_status['growActionCount']
+        total_rewards = garden_status['gardenRewardActionCount']
+
+        if garden_members:
             nama_akun = garden_members[0]['name']
             id_akun = garden_members[0]['id']
+        else:
+            nama_akun = "Unknown"
+            id_akun = "Unknown"
 
-            print_message(f"Account: {nama_akun} (ID: {id_akun})", Fore.GREEN)
-            print_message(f"Total Grows: {total_grows}, Total Rewards: {total_rewards}", Fore.BLUE)
+        print_message(f"Account: {nama_akun} (ID: {id_akun})", Fore.GREEN)
+        print_message(f"Total Grows: {total_grows}, Total Rewards: {total_rewards}", Fore.BLUE)
 
-            for _ in range(total_grows):
-                try:
-                    execute_graphql_query(headers, "mutation issueGrowAction { issueGrowAction }")
-                    execute_graphql_query(headers, "mutation commitGrowAction { commitGrowAction }")
+        for _ in range(total_grows):
+            try:
+                await execute_graphql_query(session, headers, "mutation issueGrowAction { issueGrowAction }")
+                await execute_graphql_query(session, headers, "mutation commitGrowAction { commitGrowAction }")
 
-                    total_points = get_user_total_points(headers)
-                    print_message(f"Grow action completed for {nama_akun}. Current Total Points: {total_points}", Fore.YELLOW)
-                    time.sleep(random.randint(1, 5))
-                except Exception as inner_e:
-                    error_traceback = traceback.format_exc()
-                    logging.error(f"Failed grow action for account {account.get('name', '')}: {inner_e}\n{error_traceback}")
-                    print_message(f"Error during grow action: {inner_e}\n{error_traceback}", Fore.RED)
+                total_points = await get_user_total_points(session, headers)
+                print_message(f"Grow action completed for {nama_akun}. Current Total Points: {total_points}", Fore.YELLOW)
+                await asyncio.sleep(random.randint(1, 5))
+            except Exception as inner_e:
+                error_traceback = traceback.format_exc()
+                logging.error(f"Failed grow action for account {account.get('name', '')}: {inner_e}\n{error_traceback}")
+                print_message(f"Error during grow action: {inner_e}\n{error_traceback}", Fore.RED)
 
-            mutation_execute_garden_reward = """
-            mutation executeGardenRewardAction($limit: Int!) {
-                executeGardenRewardAction(limit: $limit) {
-                    data { cardId, group }
-                    isNew
-                }
+        mutation_execute_garden_reward = """
+        mutation executeGardenRewardAction($limit: Int!) {
+            executeGardenRewardAction(limit: $limit) {
+                data { cardId, group }
+                isNew
             }
-            """
-            
-            steps = math.ceil(total_rewards / 10)
-            for _ in range(steps-1):
-                try:
-                    rewards_data = execute_graphql_query(headers, mutation_execute_garden_reward, {"limit": 10})
-                    new_cards = [
-                        f"Card ID: {card['data']['cardId']}, Group: {card['data']['group']}"
-                        for card in rewards_data['data']['executeGardenRewardAction']
-                        if card.get('isNew')
-                    ]
-                    print_message("; ".join(new_cards), Fore.MAGENTA)
-                    time.sleep(random.randint(1, 5))
-                except Exception as inner_e:
-                    error_traceback = traceback.format_exc()
-                    logging.error(f"Failed reward action for account {account.get('name', '')}: {inner_e}\n{error_traceback}")
-                    print_message(f"Error during reward action: {inner_e}\n{error_traceback}", Fore.RED)
+        }
+        """
+        
+        steps = math.ceil(total_rewards / 10)
+        for _ in range(steps - 1):
+            try:
+                rewards_data = await execute_graphql_query(session, headers, mutation_execute_garden_reward, {"limit": 10})
+                new_cards = [
+                    f"Card ID: {card['data']['cardId']}, Group: {card['data']['group']}"
+                    for card in rewards_data['data']['executeGardenRewardAction']
+                    if card.get('isNew')
+                ]
+                print_message("; ".join(new_cards), Fore.MAGENTA)
+                await asyncio.sleep(random.randint(1, 5))
+            except Exception as inner_e:
+                error_traceback = traceback.format_exc()
+                logging.error(f"Failed reward action for account {account.get('name', '')}: {inner_e}\n{error_traceback}")
+                print_message(f"Error during reward action: {inner_e}\n{error_traceback}", Fore.RED)
 
-        except Exception as e:
-            error_traceback = traceback.format_exc()
-            logging.error(f"Error processing account {account.get('name', '')}: {e}\n{error_traceback}")
-            print_message(f"Error: {e}\n{error_traceback}", Fore.RED)
+    except Exception as e:
+        error_traceback = traceback.format_exc()
+        logging.error(f"Error processing account {account.get('name', '')}: {e}\n{error_traceback}")
+        print_message(f"Error: {e}\n{error_traceback}", Fore.RED)
+
+
+async def main():
+    accounts = load_tokens_from_file()
+    async with aiohttp.ClientSession() as session:
+        while True:
+            tasks = [process_account(session, account) for account in accounts]
+            await asyncio.gather(*tasks)
+            await asyncio.sleep(random.randint(5 * 60, 10 * 60))
 
 if __name__ == "__main__":
     print_intro()
-    main()
+    asyncio.run(main())

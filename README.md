@@ -20,7 +20,7 @@
 Clone the repository and navigate to the project directory:
 ```bash
 git clone https://github.com/tanpaulus/Hana-Network
-cd HANA
+cd Hana-Network
 ```
 Install required packages:
 ```bash
@@ -33,5 +33,8 @@ python3 hana.py
 
 ### Setup Files
 1. Create a file named `pvkey.txt` and add your Private Key.
-2. Add your Refresh token to `token.json` to use `hanaauto.py`.
+2. Add your `refresh_token` to `token.json` to use `hanaauto.py`.
+
+**To get the `refresh_token`, check the image below:**
+<img width="1035" alt="Screenshot 2024-10-26 at 18 51 13" src="https://github.com/user-attachments/assets/7ebb7fb0-ef54-4b29-be49-2b9843f6eb55">
 
