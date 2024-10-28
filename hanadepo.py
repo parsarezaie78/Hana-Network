@@ -9,20 +9,14 @@ init(autoreset=True)
 
 def print_header():
     header = """
-    ███████╗████████╗ █████╗ ██╗     ██╗     
-    ██╔════╝╚══██╔══╝██╔══██╗██║     ██║     
-    ███████╗   ██║   ███████║██║     ██║     
-    ╚════██║   ██║   ██╔══██║██║     ██║     
-    ███████║   ██║   ██║  ██║███████╗███████╗
-    ╚══════╝   ╚═╝   ╚═╝  ╚═╝╚══════╝╚══════╝
-        t.me/dpangestuw31
+        t.me/SOGamersAirdrop
     Auto Deposit ETH for HANA Network
     """
     print(Fore.CYAN + Style.BRIGHT + header + Style.RESET_ALL)
 
 RPC_URL = "https://mainnet.base.org"
 CONTRACT_ADDRESS = "0xC5bf05cD32a14BFfb705Fb37a9d218895187376c"
-AMOUNT_ETH = 0.0000001  
+AMOUNT_ETH = 0.0000000001
 
 web3 = Web3(Web3.HTTPProvider(RPC_URL))
 
